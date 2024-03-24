@@ -5,3 +5,11 @@ LightBnB is a Database / sql queries / psql based project that uses server-side 
 The project uses database queries to display Properies, rental options within a specified city, properties with a minimum rating of your choosing, properties within your desired price point, and properties belonging to a specific user!
 Users are able to sign up with a few cridentals, log back in, and list properties of their own.
 
+## dependancies
+
+dependancies for the project include:
+ bcrypt, 
+ cookie-session, 
+ express, 
+ nodemon, 
+ pg
