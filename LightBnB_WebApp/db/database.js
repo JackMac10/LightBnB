@@ -2,6 +2,8 @@ const properties = require("./json/properties.json");
 const users = require("./json/users.json");
 const { Pool } = require("pg");
 
+
+// set connection to database
 const pool = new Pool({
   user: "jackmacurbeautiful",
   password: "development",
@@ -16,16 +18,19 @@ const pool = new Pool({
  * @return {Promise<{}>} A promise to the user.
  */
 const getUserWithEmail = function(email) {
+  // set query for login / email
   return pool.query('SELECT * FROM users WHERE email = $1', [email])
     .then(res => {
+      //if more than 0 rows return
       if (res.rows.length > 0) {
+        // send first row
         return res.rows[0];
       } else {
         return null;
       }
     })
     .catch(err => {
-      console.error('Query error', err.stack);
+      console.error('Query EMAIL error', err.stack);
       return null;
     });
 };
@@ -35,18 +40,22 @@ const getUserWithEmail = function(email) {
  * @param {string} id The id of the user.
  * @return {Promise<{}>} A promise to the user.
  */
-const getUserWithId = function (id) {
-  return pool.query('SELECT * FROM users WHERE id = $1;', [id])
-  .then(res => {
-    if (res.rows.length > 0) {
-      return res.rows[0];
-    } else {
-      return null;
-    }
-  })
-  .catch((err) => {
-    console.log(err.message);
-  });
+const getUserWithId = function(id) {
+  // set query for id - login / stay logged in
+  return pool
+    .query('SELECT * FROM users WHERE id = $1;', [id])
+    .then(res => {
+      //if more than 0 rows return
+      if (res.rows.length > 0) {
+        // send first row
+        return res.rows[0];
+      } else {
+        return null;
+      }
+    })
+    .catch((err) => {
+      console.error('Query ID error', err.stack);
+    });
 };
 
 /**
@@ -54,16 +63,18 @@ const getUserWithId = function (id) {
  * @param {{name: string, password: string, email: string}} user
  * @return {Promise<{}>} A promise to the user.
  */
-const addUser = function (user) {
+const addUser = function(user) {
+  // send insert query for CREATING new users
   return pool
-  .query(`INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *;`, [user.name, user.email, user.password])
-  .then((result) => {
-      return result.rows[0];
-  })
-  .catch((err) => {
-    console.error("Error executing query:", err);
-    return null;
-  });
+    .query(`INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *;`, [user.name, user.email, user.password])
+    .then(res => {
+      // send first row
+      return res.rows[0];
+    })
+    .catch((err) => {
+      console.error('Query error', err.stack);
+      return null;
+    });
 };
 
 /// Reservations
@@ -73,7 +84,7 @@ const addUser = function (user) {
  * @param {string} guest_id The id of the user.
  * @return {Promise<[{}]>} A promise to the reservations.
  */
-const getAllReservations = function (guest_id, limit = 10) {
+const getAllReservations = function(guest_id, limit = 10) {
   const queryString = `
     SELECT reservations.*, properties.*, avg(rating) as average_rating
     FROM reservations
@@ -91,7 +102,7 @@ const getAllReservations = function (guest_id, limit = 10) {
       return res.rows;
     })
     .catch((err) => {
-      console.error('Error executing query:', err);
+      console.error('Query error', err.stack);
       return null;
     });
 };
@@ -105,19 +116,20 @@ const getAllReservations = function (guest_id, limit = 10) {
  * @param {*} limit The number of results to return.
  * @return {Promise<[{}]>}  A promise to the properties.
  */
-const getAllProperties = function (options, limit = 10) {
-  // 1
+const getAllProperties = function(options, limit = 10) {
+  // empty array, stores added requests for seach bar
   const queryParams = [];
-  // 2
+  // base request query for gathering results from search
   let queryString = `
   SELECT properties.*, avg(property_reviews.rating) as average_rating
   FROM properties
   JOIN property_reviews ON properties.id = property_id
   `;
 
-  // 3
-  
+
+  // owner_id lookup
   if (options.owner_id) {
+    console.log("Owner ID: ", options.owner_id);
     queryParams.push(options.owner_id);
     if (queryParams.length === 1) {
       queryString += `WHERE owner_id = $${queryParams.length} `;
@@ -126,34 +138,38 @@ const getAllProperties = function (options, limit = 10) {
     }
   }
 
-if (options.city) {
-    console.log("Owner ID: ", options.city);
+  // city lookup
+  if (options.city) {
     queryParams.push(`%${options.city}%`);
     queryString += `WHERE city LIKE $${queryParams.length} `;
   }
 
+  // minimun and maximum price seach for seach page
   if (options.minimum_price_per_night && options.maximum_price_per_night) {
-    queryParams.push(options.minimum_price_per_night * 100);
-    queryParams.push(options.maximum_price_per_night * 100);
+    queryParams.push(options.minimum_price_per_night * 100); // converted from cents
+    queryParams.push(options.maximum_price_per_night * 100); // converted from cents
+    // if query seach is clear
     if (queryParams.length === 2) {
       queryString += `WHERE cost_per_night >= $1 AND cost_per_night <= $2 `;
     } else {
       queryString += `AND cost_per_night >= $${queryParams.length - 1} AND cost_per_night <= $${queryParams.length} `;
     }
   } else if (options.minimum_price_per_night) {
-    queryParams.push(options.minimum_price_per_night * 100);
+    queryParams.push(options.minimum_price_per_night * 100); // converted from cents
     queryString += `WHERE cost_per_night >= $${queryParams.length} `;
   } else if (options.maximum_price_per_night) {
-    queryParams.push(options.maximum_price_per_night * 100);
+    queryParams.push(options.maximum_price_per_night * 100); // converted from cents
     queryString += `WHERE cost_per_night <= $${queryParams.length} `;
   }
 
-  
+  // minimum rating search query
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
+    // if this is the only seach query request
     if (queryParams.length === 1) {
       queryString += `WHERE average_rating >= $1 `;
     } else {
+      //if this is NOT the only seach query request
       queryString += `AND average_rating >= $${queryParams.length} `;
     }
   }
@@ -178,7 +194,8 @@ if (options.city) {
  * @param {{}} property An object containing all of the property details.
  * @return {Promise<{}>} A promise to the property.
  */
-const addProperty = function (property) {
+// query to add properties to database
+const addProperty = function(property) {
   const queryParams = [
     property.owner_id,
     property.title,
@@ -216,11 +233,11 @@ const addProperty = function (property) {
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     RETURNING *;
   `;
-
+    //send search query
   return pool.query(queryString, queryParams)
     .then((res) => res.rows[0])
     .catch((err) => {
-      console.error("Error executing query:", err);
+      console.error("Error executing query:", err.stack);
       return null;
     });
 };
