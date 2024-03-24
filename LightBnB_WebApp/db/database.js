@@ -119,9 +119,6 @@ const getAllProperties = function (options, limit = 10) {
   
   if (options.owner_id) {
     console.log("Owner ID: ", options.owner_id);
-    // Check if the queryParams array already has some conditions in it
-    // If so, we prepend our condition with 'AND', otherwise, the condition starts with 'WHERE'
-    const prefix = queryParams.length > 1 ? 'AND' : 'WHERE';
     queryParams.push(options.owner_id);
     queryString += `${prefix} owner_id = $${queryParams.length} `;
 
@@ -152,9 +149,9 @@ if (options.city) {
   if (options.minimum_rating) {
     queryParams.push(options.minimum_rating);
     if (queryParams.length === 1) {
-      queryString += `WHERE rating >= $1 `;
+      queryString += `WHERE average_rating >= $1 `;
     } else {
-      queryString += `AND rating >= $${queryParams.length} `;
+      queryString += `AND average_rating >= $${queryParams.length} `;
     }
   }
 
